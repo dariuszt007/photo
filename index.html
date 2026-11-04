@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="pl" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FotoDruk Pro - Generator Zdjęć do Druku</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- jsPDF do generowania PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      touch-action: manipulation;
+    }
+
+    .no-scroll {
+      touch-action: none;
+    }
+
+    #crop-canvas {
+      touch-action: none;
+      flex: none;
+    }
+
+    .step-active {
+      border-color: #3b82f6;
+      color: #60a5fa;
+    }
+
+    .step-done {
+      border-color: #10b981;
+      color: #34d399;
+      background-color: rgba(16, 185, 129, 0.1);
+    }
+  </style>
+</head>
+
+<body class="h-full flex flex-col justify-between overflow-x-hidden select-none">
+
+  <!-- Header -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/50 p-4 sticky top-0 z-50">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/30">
+          <i data-lucide="printer" class="w-5 h-5 text-white"></i>
+        </div>
+        <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+          FotoDruk Pro
+        </h1>
+      </div>
+      <span id="step-indicator-text" class="text-xs font-semibold px-2.5 py-1 bg-slate-700/60 rounded-full text-slate-300">
+        Krok 1 z 5
+      </span>
+    </div>
+  </header>
+
+  <!-- Pasek postępu -->
+  <nav class="bg-slate-800/40 border-b border-slate-800 py-2 px-4 overflow-x-auto">
+    <div class="max-w-md mx-auto flex items-center justify-between min-w-[300px]">
+      <div id="wizard-step-1" class="step-active flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all">
+        <span class="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] mb-1">1</span>
+        Papier
+      </div>
+      <div id="wizard-step-2" class="border-slate-700 text-slate-500 flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all">
+        <span class="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] mb-1">2</span>
+        Zdjęcie
+      </div>
+      <div id="wizard-step-3" class="border-slate-700 text-slate-500 flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all">
+        <span class="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] mb-1">3</span>
+        Kadrowanie
+      </div>
+      <div id="wizard-step-4" class="border-slate-700 text-slate-500 flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all">
+        <span class="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] mb-1">4</span>
+        Arkusz
+      </div>
+      <div id="wizard-step-5" class="border-slate-700 text-slate-500 flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all">
+        <span class="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] mb-1">5</span>
+        Pobierz
+      </div>
+    </div>
+  </nav>
+
+  <!-- Treść kroków -->
+  <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-center">
+
+    <!-- KROK 1: Wybór papieru -->
+    <section id="step-1" class="space-y-4">
+      <div class="text-center mb-4">
+        <h2 class="text-xl font-bold text-white mb-1">Wybierz format papieru</h2>
+        <p class="text-xs text-slate-400">Na jakim arkuszu będziesz drukować zdjęcia?</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" onclick="selectPaperPreset(210, 297, 'A4')" class="paper-preset p-4 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 flex flex-col items-center text-center transition active:scale-95">
+          <i data-lucide="file" class="w-8 h-8 mb-2 text-blue-400"></i>
+          <span class="font-bold text-sm">A4</span>
+          <span class="text-xs text-slate-400">210 × 297 mm</span>
+        </button>
+
+        <button type="button" onclick="selectPaperPreset(100, 150, '10x15')" class="paper-preset p-4 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 flex flex-col items-center text-center transition active:scale-95">
+          <i data-lucide="camera" class="w-8 h-8 mb-2 text-amber-400"></i>
+          <span class="font-bold text-sm">10 × 15 cm</span>
+          <span class="text-xs text-slate-400">100 × 150 mm</span>
+        </button>
+
+        <button type="button" onclick="selectPaperPreset(89, 127, 'L')" class="paper-preset p-4 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 flex flex-col items-center text-center transition active:scale-95">
+          <i data-lucide="image" class="w-8 h-8 mb-2 text-indigo-400"></i>
+          <span class="font-bold text-sm">Format L</span>
+          <span class="text-xs text-slate-400">89 × 127 mm</span>
+        </button>
+
+        <button type="button" onclick="selectPaperPreset(127, 178, '2L')" class="paper-preset p-4 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 flex flex-col items-center text-center transition active:scale-95">
+          <i data-lucide="images" class="w-8 h-8 mb-2 text-emerald-400"></i>
+          <span class="font-bold text-sm">Format 2L</span>
+          <span class="text-xs text-slate-400">127 × 178 mm</span>
+        </button>
+      </div>
+
+      <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 space-y-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sliders" class="w-4 h-4 text-blue-400"></i>
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Własny rozmiar arkusza (mm)</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1" for="paper-width">Szerokość (mm)</label>
+            <input type="number" id="paper-width" value="210" min="20" max="1000" onchange="markPaperCustom()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1" for="paper-height">Wysokość (mm)</label>
+            <input type="number" id="paper-height" value="297" min="20" max="1000" onchange="markPaperCustom()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KROK 2: Wybór zdjęcia -->
+    <section id="step-2" class="space-y-4 hidden">
+      <div class="text-center mb-2">
+        <h2 class="text-xl font-bold text-white mb-1">Wybierz typ zdjęcia</h2>
+        <p class="text-xs text-slate-400">Wybierz przeznaczenie lub wpisz własne wymiary</p>
+      </div>
+
+      <div class="space-y-2.5">
+        <button type="button" onclick="selectPhotoPreset(35, 45, 'Dowód osobisty', 'dowod')" class="w-full p-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 text-left transition active:scale-[0.98] flex items-start gap-3">
+          <div class="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 mt-0.5">
+            <i data-lucide="id-card" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="font-bold text-sm text-white">Dowód osobisty</span>
+              <span class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">35 × 45 mm</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-tight">
+              Gov.pl: twarz ma zajmować 70–80% wysokości zdjęcia; zdjęcie ma pokazywać całą głowę i górną część barków.
+            </p>
+          </div>
+        </button>
+
+        <button type="button" onclick="selectPhotoPreset(35, 45, 'Paszport', 'paszport')" class="w-full p-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 text-left transition active:scale-[0.98] flex items-start gap-3">
+          <div class="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 mt-0.5">
+            <i data-lucide="file-badge-2" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="font-bold text-sm text-white">Paszport</span>
+              <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">35 × 45 mm</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-tight">
+              Gov.pl: twarz ma zajmować 70–80% wysokości zdjęcia; zdjęcie ma pokazywać całą głowę i górną część barków.
+            </p>
+          </div>
+        </button>
+
+        <button type="button" onclick="selectPhotoPreset(30, 42, 'Legitymacja szkolna', 'legitymacja')" class="w-full p-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 text-left transition active:scale-[0.98] flex items-start gap-3">
+          <div class="p-2.5 bg-amber-500/10 rounded-xl text-amber-400 mt-0.5">
+            <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="font-bold text-sm text-white">Legitymacja szkolna</span>
+              <span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">30 × 42 mm</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-tight">
+              Wymagania zdjęcia mogą zależeć od szkoły lub systemu wydawania dokumentu. Sprawdź je przed użyciem.
+            </p>
+          </div>
+        </button>
+
+        <button type="button" onclick="selectPhotoPreset(51, 51, 'Wiza USA (2×2 cale)', 'wiza_usa')" class="w-full p-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 text-left transition active:scale-[0.98] flex items-start gap-3">
+          <div class="p-2.5 bg-purple-500/10 rounded-xl text-purple-400 mt-0.5">
+            <i data-lucide="globe" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="font-bold text-sm text-white">Wiza USA</span>
+              <span class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">51 × 51 mm (2×2")</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-tight">
+              Zdjęcie drukowane jest kwadratowe. Dla wniosku online sprawdź osobne wymagania pliku cyfrowego.
+            </p>
+          </div>
+        </button>
+
+        <button type="button" onclick="selectPhotoPreset(48, 33, 'Wiza Chin', 'wiza_chiny')" class="w-full p-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-blue-500 text-left transition active:scale-[0.98] flex items-start gap-3">
+          <div class="p-2.5 bg-red-500/10 rounded-xl text-red-400 mt-0.5">
+            <i data-lucide="globe-2" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="font-bold text-sm text-white">Wiza Chin</span>
+              <span class="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md">48 × 33 mm</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-tight">
+              Profil orientacyjny: sprawdź aktualne wymagania centrum wizowego właściwego dla miejsca składania wniosku.
+            </p>
+          </div>
+        </button>
+      </div>
+
+      <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 space-y-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="crop" class="w-4 h-4 text-blue-400"></i>
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Własny format zdjęcia (mm)</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1" for="photo-width">Szerokość (mm)</label>
+            <input type="number" id="photo-width" value="35" min="10" max="300" onchange="saveCustomDimensions(); setPresetCustom();" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1" for="photo-height">Wysokość (mm)</label>
+            <input type="number" id="photo-height" value="45" min="10" max="300" onchange="saveCustomDimensions(); setPresetCustom();" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KROK 3: Kadrowanie i wgrywanie zdjęcia -->
+    <section id="step-3" class="space-y-4 hidden">
+      <div class="text-center mb-1">
+        <h2 class="text-xl font-bold text-white mb-0.5">Dopasuj zdjęcie do ramki</h2>
+        <p class="text-xs text-slate-400" id="crop-guideline-text">Elipsa jest tylko pomocą w kadrowaniu</p>
+      </div>
+
+      <div id="crop-stage" class="relative w-full aspect-square max-w-[320px] mx-auto bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl flex items-center justify-center no-scroll">
+        <canvas id="crop-canvas" class="cursor-grab active:cursor-grabbing"></canvas>
+
+        <div id="crop-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/95 backdrop-blur-sm z-10 pointer-events-none">
+          <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-3 text-blue-400">
+            <i data-lucide="image-plus" class="w-8 h-8"></i>
+          </div>
+          <p class="text-sm font-medium text-slate-200">Brak wczytanego zdjęcia</p>
+          <p class="text-xs text-slate-400 mt-1">Użyj przycisków poniżej, aby dodać zdjęcie z pliku lub zrobić zdjęcie aparatem.</p>
+        </div>
+      </div>
+
+      <div id="controls-container" class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700 space-y-3 hidden">
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i> Oddal</span>
+            <span class="font-semibold text-slate-200" id="zoom-value">100%</span>
+            <span class="flex items-center gap-1">Przybliż <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></span>
+          </div>
+          <input type="range" id="zoom-slider" min="0.2" max="3" step="0.01" value="1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Obrót</span>
+            <span class="font-semibold text-slate-200" id="rotate-value">0°</span>
+            <span class="flex items-center gap-1"><i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i></span>
+          </div>
+          <input type="range" id="rotate-slider" min="-45" max="45" step="1" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <input type="file" id="file-input" accept="image/*" class="hidden">
+        <input type="file" id="camera-input" accept="image/*" capture="user" class="hidden">
+
+        <button type="button" onclick="document.getElementById('file-input').click()" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 font-medium text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+          <i data-lucide="upload" class="w-4 h-4 text-blue-400"></i>
+          <span>Wybierz zdjęcie</span>
+        </button>
+
+        <button type="button" onclick="document.getElementById('camera-input').click()" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 font-medium text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+          <i data-lucide="camera" class="w-4 h-4 text-emerald-400"></i>
+          <span>Otwórz aparat</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- KROK 4: Podgląd arkusza -->
+    <section id="step-4" class="space-y-4 hidden">
+      <div class="text-center mb-1">
+        <h2 class="text-xl font-bold text-white mb-0.5">Podgląd arkusza do druku</h2>
+        <p class="text-xs text-slate-400" id="sheet-info-text">Automatyczne rozmieszczenie zdjęć na kartce</p>
+      </div>
+
+      <div class="relative w-full max-w-[340px] mx-auto bg-slate-950 p-3 rounded-2xl border border-slate-800 shadow-2xl flex items-center justify-center overflow-hidden">
+        <div id="paper-preview-container" class="relative bg-white shadow-xl transition-all duration-300 flex items-center justify-center overflow-hidden rounded-sm">
+          <canvas id="sheet-canvas" class="max-w-full max-h-[380px] object-contain"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700 space-y-2">
+        <label for="toggle-grid-lines" class="text-xs text-slate-300 flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="toggle-grid-lines" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
+          <span>Pokaż pomocnicze linie do cięcia</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- KROK 5: Pobieranie -->
+    <section id="step-5" class="space-y-4 hidden">
+      <div class="text-center mb-3">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2 border border-emerald-500/30">
+          <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+        </div>
+        <h2 class="text-xl font-bold text-white mb-1">Gotowe do pobrania!</h2>
+        <p class="text-xs text-slate-400">Pobierz arkusz i drukuj w skali 100% / rozmiarze rzeczywistym.</p>
+      </div>
+
+      <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700 text-xs space-y-2">
+        <div class="flex justify-between border-b border-slate-700/60 pb-1.5">
+          <span class="text-slate-400">Rozmiar arkusza:</span>
+          <span class="font-semibold text-slate-200" id="summary-paper">-</span>
+        </div>
+        <div class="flex justify-between border-b border-slate-700/60 pb-1.5">
+          <span class="text-slate-400">Typ i rozmiar zdjęcia:</span>
+          <span class="font-semibold text-slate-200" id="summary-photo">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Liczba zdjęć na arkuszu:</span>
+          <span class="font-bold text-emerald-400" id="summary-count">-</span>
+        </div>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        <button type="button" onclick="downloadPDF()" class="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition active:scale-95">
+          <i data-lucide="file-down" class="w-5 h-5"></i>
+          <span>Pobierz jako plik PDF</span>
+        </button>
+
+        <button type="button" onclick="downloadImage('jpg')" class="w-full py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+          <i data-lucide="image" class="w-4 h-4 text-amber-400"></i>
+          <span>Pobierz jako obraz JPG (300 DPI)</span>
+        </button>
+
+        <button type="button" onclick="downloadImage('png')" class="w-full py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+          <i data-lucide="image" class="w-4 h-4 text-emerald-400"></i>
+          <span>Pobierz jako obraz PNG (300 DPI)</span>
+        </button>
+      </div>
+
+      <p class="text-[11px] text-slate-500 text-center leading-relaxed">
+        Elipsa jest tylko pomocą kadrowania — aplikacja nie sprawdza automatycznie biometrycznej zgodności zdjęcia. Wymagania mogą zależeć od urzędu lub centrum wizowego.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Dolna nawigacja -->
+  <footer class="bg-slate-800/80 backdrop-blur border-t border-slate-700/50 p-4 sticky bottom-0 z-50">
+    <div class="max-w-md mx-auto flex items-center gap-3">
+      <button id="btn-prev" type="button" onclick="prevStep()" class="py-3 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:pointer-events-none transition">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Wstecz</span>
+      </button>
+
+      <button id="btn-next" type="button" onclick="nextStep()" class="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition active:scale-95">
+        <span>Dalej</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-600 text-slate-100 text-xs px-4 py-2.5 rounded-full shadow-xl opacity-0 pointer-events-none transition-all duration-300 z-50 flex items-center gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-blue-400"></i>
+    <span id="toast-message">Wiadomość</span>
+  </div>
+
+  <script>
+    "use strict";
+
+    const EXPORT_DPI = 300;
+    const MM_PER_INCH = 25.4;
+    const MAX_EXPORT_PIXELS = 30000000;
+
+    let currentStep = 1;
+
+    let paperConfig = {
+      width: 210,
+      height: 297,
+      name: "A4"
+    };
+
+    let photoConfig = {
+      width: 35,
+      height: 45,
+      name: "Dowód osobisty",
+      presetType: "dowod",
+      faceRatio: 0.75
+    };
+
+    let loadedImage = null;
+
+    let cropState = {
+      x: 0,
+      y: 0,
+      scale: 1,
+      baseScale: 1,
+      rotation: 0
+    };
+
+    let calculatedGrid = {
+      cols: 0,
+      rows: 0,
+      count: 0,
+      spacing: 2
+    };
+
+    const cropCanvas = document.getElementById("crop-canvas");
+    const cropCtx = cropCanvas.getContext("2d");
+    const sheetCanvas = document.getElementById("sheet-canvas");
+    const sheetCtx = sheetCanvas.getContext("2d");
+
+    let toastTimeout;
+    let activePointers = new Map();
+    let dragPointerId = null;
+    let dragOffset = { x: 0, y: 0 };
+    let pinchStart = null;
+
+    window.onload = () => {
+      lucide.createIcons();
+      loadCustomDimensions();
+      setupEventListeners();
+      updateStepUI();
+    };
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toast-message").innerText = message;
+      toast.classList.remove("opacity-0", "pointer-events-none");
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add("opacity-0", "pointer-events-none");
+      }, 3000);
+    }
+
+    // --- LOCAL STORAGE ---
+    function loadCustomDimensions() {
+      try {
+        const savedPaperW = localStorage.getItem("fotodruk_paper_width");
+        const savedPaperH = localStorage.getItem("fotodruk_paper_height");
+        const savedPhotoW = localStorage.getItem("fotodruk_photo_width");
+        const savedPhotoH = localStorage.getItem("fotodruk_photo_height");
+
+        if (savedPaperW) document.getElementById("paper-width").value = savedPaperW;
+        if (savedPaperH) document.getElementById("paper-height").value = savedPaperH;
+        if (savedPhotoW) document.getElementById("photo-width").value = savedPhotoW;
+        if (savedPhotoH) document.getElementById("photo-height").value = savedPhotoH;
+      } catch (error) {
+        // Aplikacja nadal działa, jeśli localStorage jest niedostępny.
+      }
+    }
+
+    function saveCustomDimensions() {
+      try {
+        const paperW = document.getElementById("paper-width").value;
+        const paperH = document.getElementById("paper-height").value;
+        const photoW = document.getElementById("photo-width").value;
+        const photoH = document.getElementById("photo-height").value;
+
+        if (paperW) localStorage.setItem("fotodruk_paper_width", paperW);
+        if (paperH) localStorage.setItem("fotodruk_paper_height", paperH);
+        if (photoW) localStorage.setItem("fotodruk_photo_width", photoW);
+        if (photoH) localStorage.setItem("fotodruk_photo_height", photoH);
+      } catch (error) {
+        // Brak zapisu lokalnego nie blokuje pracy aplikacji.
+      }
+    }
+
+    function markPaperCustom() {
+      paperConfig.name = "Własny format";
+      saveCustomDimensions();
+    }
+
+    function selectPaperPreset(width, height, name) {
+      document.getElementById("paper-width").value = width;
+      document.getElementById("paper-height").value = height;
+      paperConfig = { width, height, name };
+      saveCustomDimensions();
+      showToast(`Wybrano format papieru: ${name}`);
+    }
+
+    function selectPhotoPreset(width, height, name, presetType) {
+      document.getElementById("photo-width").value = width;
+      document.getElementById("photo-height").value = height;
+
+      const guide = getPhotoGuide(presetType);
+
+      photoConfig.width = width;
+      photoConfig.height = height;
+      photoConfig.name = name;
+      photoConfig.presetType = presetType;
+      photoConfig.faceRatio = guide.faceRatio;
+
+      saveCustomDimensions();
+      document.getElementById("crop-guideline-text").innerText = guide.text;
+
+      showToast(`Wybrano format: ${name}`);
+    }
+
+    function getPhotoGuide(type) {
+      if (type === "dowod" || type === "paszport") {
+        return {
+          faceRatio: 0.75,
+          text: "Gov.pl: twarz powinna zajmować 70–80% wysokości zdjęcia. Elipsa jest tylko pomocą kadrowania."
+        };
+      }
+
+      if (type === "wiza_usa") {
+        return {
+          faceRatio: 0.60,
+          text: "USA: zdjęcie drukowane 51 × 51 mm; wysokość głowy od brody do czubka głowy wynosi 25–35 mm. Sprawdź wymogi pliku cyfrowego."
+        };
+      }
+
+      if (type === "wiza_chiny") {
+        return {
+          faceRatio: 0.635,
+          text: "Chiny: profil 48 × 33 mm; instrukcja centrum wizowego podaje wysokość głowy 28–33 mm. Sprawdź wymagania właściwego centrum."
+        };
+      }
+
+      if (type === "legitymacja") {
+        return {
+          faceRatio: 0.65,
+          text: "Wymagania zdjęcia do legitymacji mogą zależeć od szkoły lub systemu. Sprawdź je przed użyciem."
+        };
+      }
+
+      return {
+        faceRatio: 0.75,
+        text: "Ustaw zdjęcie w ramce. Dla profilu własnego sprawdź wymiary i zasady u właściwego urzędu."
+      };
+    }
+
+    function setPresetCustom() {
+      photoConfig.width = Number(document.getElementById("photo-width").value) || 35;
+      photoConfig.height = Number(document.getElementById("photo-height").value) || 45;
+      photoConfig.presetType = "custom";
+      photoConfig.name = "Własny format";
+      photoConfig.faceRatio = 0.75;
+      document.getElementById("crop-guideline-text").innerText =
+        "Elipsa jest tylko pomocą kadrowania. Sprawdź wymagania właściwego urzędu.";
+    }
+
+    function validateDimensions() {
+      const paperW = Number(document.getElementById("paper-width").value);
+      const paperH = Number(document.getElementById("paper-height").value);
+      const photoW = Number(document.getElementById("photo-width").value);
+      const photoH = Number(document.getElementById("photo-height").value);
+
+      if (!Number.isFinite(paperW) || !Number.isFinite(paperH) ||
+          paperW < 20 || paperH < 20 || paperW > 1000 || paperH > 1000) {
+        showToast("Wymiary papieru muszą wynosić od 20 do 1000 mm.");
+        return false;
+      }
+
+      if (!Number.isFinite(photoW) || !Number.isFinite(photoH) ||
+          photoW < 10 || photoH < 10 || photoW > 300 || photoH > 300) {
+        showToast("Wymiary zdjęcia muszą wynosić od 10 do 300 mm.");
+        return false;
+      }
+
+      paperConfig.width = paperW;
+      paperConfig.height = paperH;
+      photoConfig.width = photoW;
+      photoConfig.height = photoH;
+
+      if (paperConfig.name === "A4" && (paperW !== 210 || paperH !== 297)) {
+        paperConfig.name = "Własny format";
+      }
+
+      saveCustomDimensions();
+      return true;
+    }
+
+    // --- WIZARD ---
+    function nextStep() {
+      if (currentStep === 1) {
+        const paperW = Number(document.getElementById("paper-width").value);
+        const paperH = Number(document.getElementById("paper-height").value);
+
+        if (!Number.isFinite(paperW) || !Number.isFinite(paperH) ||
+            paperW < 20 || paperH < 20 || paperW > 1000 || paperH > 1000) {
+          showToast("Sprawdź wymiary papieru (20–1000 mm).");
+          return;
+        }
+
+        paperConfig.width = paperW;
+        paperConfig.height = paperH;
+        saveCustomDimensions();
+      } else if (currentStep === 2) {
+        const photoW = Number(document.getElementById("photo-width").value);
+        const photoH = Number(document.getElementById("photo-height").value);
+
+        if (!Number.isFinite(photoW) || !Number.isFinite(photoH) ||
+            photoW < 10 || photoH < 10 || photoW > 300 || photoH > 300) {
+          showToast("Sprawdź wymiary zdjęcia (10–300 mm).");
+          return;
+        }
+
+        photoConfig.width = photoW;
+        photoConfig.height = photoH;
+        saveCustomDimensions();
+        initCropCanvas();
+      } else if (currentStep === 3) {
+        if (!loadedImage) {
+          showToast("Wgraj najpierw zdjęcie!");
+          return;
+        }
+
+        if (!validateDimensions()) return;
+
+        calculateGrid();
+        if (calculatedGrid.count < 1) {
+          showToast("Wybrane zdjęcie nie mieści się na tym arkuszu.");
+          return;
+        }
+
+        try {
+          renderSheetPreview();
+        } catch (error) {
+          showToast(error.message || "Nie udało się przygotować podglądu.");
+          return;
+        }
+      } else if (currentStep === 4) {
+        updateSummary();
+      }
+
+      if (currentStep < 5) {
+        currentStep++;
+        updateStepUI();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        updateStepUI();
+      }
+    }
+
+    function updateStepUI() {
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`step-${i}`).classList.toggle("hidden", i !== currentStep);
+
+        const navEl = document.getElementById(`wizard-step-${i}`);
+        navEl.className = "flex flex-col items-center flex-1 border-b-2 pb-1 text-xs font-medium transition-all ";
+
+        if (i < currentStep) {
+          navEl.classList.add("step-done");
+        } else if (i === currentStep) {
+          navEl.classList.add("step-active");
+        } else {
+          navEl.classList.add("border-slate-700", "text-slate-500");
+        }
+      }
+
+      document.getElementById("step-indicator-text").innerText = `Krok ${currentStep} z 5`;
+      document.getElementById("btn-prev").disabled = currentStep === 1;
+      document.getElementById("btn-next").classList.toggle("hidden", currentStep === 5);
+
+      if (currentStep === 3) {
+        requestAnimationFrame(() => {
+          fitCropCanvasToStage();
+          renderCropCanvas();
+        });
+      }
+
+      lucide.createIcons();
+    }
+
+    // --- KADROWANIE ---
+    function initCropCanvas() {
+      const maxCanvasDimension = 640;
+      const aspectRatio = photoConfig.width / photoConfig.height;
+
+      if (aspectRatio >= 1) {
+        cropCanvas.width = maxCanvasDimension;
+        cropCanvas.height = Math.max(1, Math.round(maxCanvasDimension / aspectRatio));
+      } else {
+        cropCanvas.height = maxCanvasDimension;
+        cropCanvas.width = Math.max(1, Math.round(maxCanvasDimension * aspectRatio));
+      }
+
+      fitCropCanvasToStage();
+
+      const guide = getPhotoGuide(photoConfig.presetType);
+      photoConfig.faceRatio = guide.faceRatio;
+      document.getElementById("crop-guideline-text").innerText = guide.text;
+
+      if (loadedImage) {
+        resetImagePlacement();
+      } else {
+        renderCropCanvas();
+      }
+    }
+
+    function fitCropCanvasToStage() {
+      const stage = document.getElementById("crop-stage");
+      const availableWidth = stage.clientWidth;
+      const availableHeight = stage.clientHeight;
+
+      if (!availableWidth || !availableHeight || !cropCanvas.width || !cropCanvas.height) return;
+
+      const canvasRatio = cropCanvas.width / cropCanvas.height;
+      let displayWidth = availableWidth;
+      let displayHeight = displayWidth / canvasRatio;
+
+      if (displayHeight > availableHeight) {
+        displayHeight = availableHeight;
+        displayWidth = displayHeight * canvasRatio;
+      }
+
+      cropCanvas.style.width = `${displayWidth}px`;
+      cropCanvas.style.height = `${displayHeight}px`;
+    }
+
+    function resetImagePlacement() {
+      if (!loadedImage) return;
+
+      // Obraz początkowo wypełnia ramkę bez pustych pasów.
+      cropState.baseScale = Math.max(
+        cropCanvas.width / loadedImage.width,
+        cropCanvas.height / loadedImage.height
+      );
+      cropState.scale = cropState.baseScale;
+      cropState.x = (cropCanvas.width - loadedImage.width * cropState.scale) / 2;
+      cropState.y = (cropCanvas.height - loadedImage.height * cropState.scale) / 2;
+      cropState.rotation = 0;
+
+      document.getElementById("zoom-slider").value = "1";
+      document.getElementById("zoom-value").innerText = "100%";
+      document.getElementById("rotate-slider").value = "0";
+      document.getElementById("rotate-value").innerText = "0°";
+
+      renderCropCanvas();
+    }
+
+    function handleImageLoad(file) {
+      if (!file) return;
+
+      if (!file.type || !file.type.startsWith("image/")) {
+        showToast("Wybierz plik obrazu.");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onerror = () => showToast("Nie udało się odczytać pliku.");
+
+      reader.onload = (event) => {
+        const img = new Image();
+
+        img.onerror = () => showToast("Nie udało się otworzyć tego obrazu.");
+
+        img.onload = () => {
+          loadedImage = img;
+          document.getElementById("crop-placeholder").classList.add("hidden");
+          document.getElementById("controls-container").classList.remove("hidden");
+
+          if (!cropCanvas.width || !cropCanvas.height) initCropCanvas();
+          resetImagePlacement();
+        };
+
+        img.src = event.target.result;
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function renderCropCanvas() {
+      const w = cropCanvas.width;
+      const h = cropCanvas.height;
+
+      cropCtx.clearRect(0, 0, w, h);
+
+      if (!loadedImage) return;
+
+      cropCtx.save();
+
+      const centerX = cropState.x + (loadedImage.width * cropState.scale) / 2;
+      const centerY = cropState.y + (loadedImage.height * cropState.scale) / 2;
+
+      cropCtx.translate(centerX, centerY);
+      cropCtx.rotate((cropState.rotation * Math.PI) / 180);
+      cropCtx.drawImage(
+        loadedImage,
+        -(loadedImage.width * cropState.scale) / 2,
+        -(loadedImage.height * cropState.scale) / 2,
+        loadedImage.width * cropState.scale,
+        loadedImage.height * cropState.scale
+      );
+
+      cropCtx.restore();
+      drawCropGuide();
+    }
+
+    function drawCropGuide() {
+      const w = cropCanvas.width;
+      const h = cropCanvas.height;
+      const centerX = w / 2;
+      const centerY = h * 0.46;
+      const radiusY = h * photoConfig.faceRatio / 2;
+      const radiusX = Math.min(w * 0.37, radiusY * 0.72);
+
+      cropCtx.save();
+
+      // Przyciemnienie poza obszarem pomocniczej elipsy.
+      cropCtx.fillStyle = "rgba(0, 0, 0, 0.38)";
+      cropCtx.fillRect(0, 0, w, h);
+
+      cropCtx.globalCompositeOperation = "destination-out";
+      cropCtx.beginPath();
+      cropCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      cropCtx.fill();
+
+      cropCtx.globalCompositeOperation = "source-over";
+      cropCtx.beginPath();
+      cropCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      cropCtx.strokeStyle = "#3b82f6";
+      cropCtx.lineWidth = Math.max(2, w / 250);
+      cropCtx.setLineDash([w / 35, w / 50]);
+      cropCtx.stroke();
+
+      cropCtx.setLineDash([w / 60, w / 80]);
+      cropCtx.strokeStyle = "rgba(234, 179, 8, 0.9)";
+      cropCtx.lineWidth = Math.max(1, w / 500);
+
+      const eyeY = centerY - radiusY * 0.1;
+      cropCtx.beginPath();
+      cropCtx.moveTo(centerX - radiusX * 0.85, eyeY);
+      cropCtx.lineTo(centerX + radiusX * 0.85, eyeY);
+      cropCtx.stroke();
+
+      cropCtx.restore();
+    }
+
+    // --- PODGLĄD CZYSTEGO ZDJĘCIA DO DRUKU ---
+    function getCroppedPhotoCanvas() {
+      if (!loadedImage) {
+        throw new Error("Najpierw wczytaj zdjęcie.");
+      }
+
+      const cleanCanvas = document.createElement("canvas");
+      cleanCanvas.width = Math.max(1, Math.round(photoConfig.width * EXPORT_DPI / MM_PER_INCH));
+      cleanCanvas.height = Math.max(1, Math.round(photoConfig.height * EXPORT_DPI / MM_PER_INCH));
+
+      const ctx = cleanCanvas.getContext("2d");
+      if (!ctx) throw new Error("Nie udało się utworzyć obrazu.");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cleanCanvas.width, cleanCanvas.height);
+
+      const scaleX = cleanCanvas.width / cropCanvas.width;
+      const scaleY = cleanCanvas.height / cropCanvas.height;
+
+      const centerX = (cropState.x + (loadedImage.width * cropState.scale) / 2) * scaleX;
+      const centerY = (cropState.y + (loadedImage.height * cropState.scale) / 2) * scaleY;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((cropState.rotation * Math.PI) / 180);
+      ctx.scale(scaleX, scaleY);
+
+      ctx.drawImage(
+        loadedImage,
+        -(loadedImage.width * cropState.scale) / 2,
+        -(loadedImage.height * cropState.scale) / 2,
+        loadedImage.width * cropState.scale,
+        loadedImage.height * cropState.scale
+      );
+
+      ctx.restore();
+      return cleanCanvas;
+    }
+
+    // --- UKŁAD ARKUSZA ---
+    function calculateGrid() {
+      const pW = paperConfig.width;
+      const pH = paperConfig.height;
+      const fW = photoConfig.width;
+      const fH = photoConfig.height;
+      const margin = 5;
+      const spacing = 2;
+
+      const availableW = pW - margin * 2;
+      const availableH = pH - margin * 2;
+
+      const cols = Math.max(0, Math.floor((availableW + spacing) / (fW + spacing)));
+      const rows = Math.max(0, Math.floor((availableH + spacing) / (fH + spacing)));
+
+      calculatedGrid = {
+        cols,
+        rows,
+        count: cols * rows,
+        spacing
+      };
+
+      return calculatedGrid;
+    }
+
+    function drawSheet(ctx, canvas, photoCanvas) {
+      const { cols, rows, count, spacing } = calculateGrid();
+      if (!count) {
+        throw new Error("Na wybranym arkuszu nie mieści się ani jedno zdjęcie.");
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const scaleX = canvas.width / paperConfig.width;
+      const scaleY = canvas.height / paperConfig.height;
+
+      const gridTotalW = cols * photoConfig.width + (cols - 1) * spacing;
+      const gridTotalH = rows * photoConfig.height + (rows - 1) * spacing;
+      const startX = (paperConfig.width - gridTotalW) / 2;
+      const startY = (paperConfig.height - gridTotalH) / 2;
+      const drawLines = document.getElementById("toggle-grid-lines").checked;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const xMM = startX + col * (photoConfig.width + spacing);
+          const yMM = startY + row * (photoConfig.height + spacing);
+
+          const xPX = xMM * scaleX;
+          const yPX = yMM * scaleY;
+          const wPX = photoConfig.width * scaleX;
+          const hPX = photoConfig.height * scaleY;
+
+          ctx.drawImage(photoCanvas, xPX, yPX, wPX, hPX);
+
+          if (drawLines) {
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = Math.max(1, canvas.width / 1600);
+            ctx.strokeRect(xPX, yPX, wPX, hPX);
+          }
+        }
+      }
+    }
+
+    // --- PODGLĄD ARKUSZA ---
+    function renderSheetPreview() {
+      if (!loadedImage) return;
+
+      const maxDimension = 600;
+      if (paperConfig.width >= paperConfig.height) {
+        sheetCanvas.width = maxDimension;
+        sheetCanvas.height = Math.round(maxDimension * paperConfig.height / paperConfig.width);
+      } else {
+        sheetCanvas.height = maxDimension;
+        sheetCanvas.width = Math.round(maxDimension * paperConfig.width / paperConfig.height);
+      }
+
+      const photoCanvas = getCroppedPhotoCanvas();
+      drawSheet(sheetCtx, sheetCanvas, photoCanvas);
+
+      const { cols, rows, count } = calculateGrid();
+      document.getElementById("sheet-info-text").innerText =
+        `Rozmieszczono ${count} szt. (${cols} kolumn × ${rows} wierszy)`;
+
+      const previewContainer = document.getElementById("paper-preview-container");
+      previewContainer.style.width = `${sheetCanvas.width}px`;
+      previewContainer.style.height = `${sheetCanvas.height}px`;
+    }
+
+    // --- PODSUMOWANIE ---
+    function updateSummary() {
+      calculateGrid();
+
+      document.getElementById("summary-paper").innerText =
+        `${paperConfig.name} (${paperConfig.width} × ${paperConfig.height} mm)`;
+
+      document.getElementById("summary-photo").innerText =
+        `${photoConfig.name} (${photoConfig.width} × ${photoConfig.height} mm)`;
+
+      document.getElementById("summary-count").innerText =
+        `${calculatedGrid.count} szt.`;
+    }
+
+    // --- EKSPORT JPG / PNG ---
+    function createExportCanvas() {
+      if (!loadedImage) throw new Error("Najpierw wczytaj zdjęcie.");
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(paperConfig.width * EXPORT_DPI / MM_PER_INCH);
+      canvas.height = Math.round(paperConfig.height * EXPORT_DPI / MM_PER_INCH);
+
+      if (canvas.width * canvas.height > MAX_EXPORT_PIXELS) {
+        throw new Error("Arkusz jest zbyt duży do eksportu. Wybierz mniejszy format.");
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Przeglądarka nie może utworzyć obrazu.");
+
+      const photoCanvas = getCroppedPhotoCanvas();
+      drawSheet(ctx, canvas, photoCanvas);
+      return canvas;
+    }
+
+    function canvasToBlob(canvas, mimeType, quality) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error("Przeglądarka nie utworzyła pliku. Spróbuj użyć mniejszego arkusza."));
+        }, mimeType, quality);
+      });
+    }
+
+    async function downloadImage(format) {
+      try {
+        const exportCanvas = createExportCanvas();
+        const mimeType = format === "jpg" ? "image/jpeg" : "image/png";
+        let blob = await canvasToBlob(exportCanvas, mimeType, 0.95);
+
+        // Zapisuje rzeczywistą informację o 300 DPI w metadanych pliku.
+        blob = await addDpiMetadata(blob, format);
+
+        const filename =
+          `fotodruk_${paperConfig.width}x${paperConfig.height}mm_${photoConfig.width}x${photoConfig.height}mm.${format}`;
+
+        downloadBlob(blob, filename);
+        showToast(`Pobrano plik ${format.toUpperCase()} (300 DPI).`);
+      } catch (error) {
+        showToast(error.message || "Nie udało się wyeksportować obrazu.");
+      }
+    }
+
+    // --- EKSPORT PDF ---
+    function downloadPDF() {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error("Nie udało się załadować biblioteki PDF. Sprawdź połączenie z internetem.");
+        }
+
+        const exportCanvas = createExportCanvas();
+        const imageData = exportCanvas.toDataURL("image/jpeg", 0.95);
+        const { jsPDF } = window.jspdf;
+        const orientation = paperConfig.width > paperConfig.height ? "l" : "p";
+
+        const pdf = new jsPDF({
+          orientation,
+          unit: "mm",
+          format: [paperConfig.width, paperConfig.height],
+          compress: true
+        });
+
+        pdf.addImage(
+          imageData,
+          "JPEG",
+          0,
+          0,
+          paperConfig.width,
+          paperConfig.height,
+          undefined,
+          "FAST"
+        );
+
+        pdf.save(`fotodruk_${paperConfig.width}x${paperConfig.height}mm.pdf`);
+        showToast("Pobrano PDF. Drukuj w rozmiarze rzeczywistym.");
+      } catch (error) {
+        showToast(error.message || "Nie udało się utworzyć pliku PDF.");
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    // --- METADANE 300 DPI ---
+    async function addDpiMetadata(blob, format) {
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+
+      if (format === "jpg") {
+        return new Blob([addJpegDpi(bytes)], { type: "image/jpeg" });
+      }
+
+      return new Blob([addPngDpi(bytes)], { type: "image/png" });
+    }
+
+    function addJpegDpi(bytes) {
+      if (bytes.length < 4 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) {
+        return bytes;
+      }
+
+      let offset = 2;
+
+      while (offset + 4 < bytes.length) {
+        if (bytes[offset] !== 0xFF) break;
+
+        const marker = bytes[offset + 1];
+
+        // Początek danych obrazu albo koniec pliku.
+        if (marker === 0xDA || marker === 0xD9) break;
+
+        // Markery bez pola długości.
+        if (marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
+          offset += 2;
+          continue;
+        }
+
+        const segmentLength = (bytes[offset + 2] << 8) | bytes[offset + 3];
+        if (segmentLength < 2 || offset + 2 + segmentLength > bytes.length) break;
+
+        const isJfif =
+          marker === 0xE0 &&
+          segmentLength >= 16 &&
+          bytes[offset + 4] === 0x4A &&
+          bytes[offset + 5] === 0x46 &&
+          bytes[offset + 6] === 0x49 &&
+          bytes[offset + 7] === 0x46 &&
+          bytes[offset + 8] === 0x00;
+
+        if (isJfif) {
+          // JFIF: jednostka 1 oznacza DPI.
+          bytes[offset + 11] = 1;
+          bytes[offset + 12] = (EXPORT_DPI >> 8) & 0xFF;
+          bytes[offset + 13] = EXPORT_DPI & 0xFF;
+          bytes[offset + 14] = (EXPORT_DPI >> 8) & 0xFF;
+          bytes[offset + 15] = EXPORT_DPI & 0xFF;
+          return bytes;
+        }
+
+        offset += 2 + segmentLength;
+      }
+
+      // Jeśli JPEG nie ma segmentu JFIF, wstawiamy go za markerem SOI.
+      const jfifSegment = new Uint8Array([
+        0xFF, 0xE0,       // APP0
+        0x00, 0x10,       // długość segmentu
+        0x4A, 0x46, 0x49, 0x46, 0x00, // "JFIF\0"
+        0x01, 0x01,       // wersja 1.01
+        0x01,             // jednostka: DPI
+        (EXPORT_DPI >> 8) & 0xFF, EXPORT_DPI & 0xFF,
+        (EXPORT_DPI >> 8) & 0xFF, EXPORT_DPI & 0xFF,
+        0x00, 0x00        // brak miniatury
+      ]);
+
+      const result = new Uint8Array(bytes.length + jfifSegment.length);
+      result.set(bytes.slice(0, 2), 0);
+      result.set(jfifSegment, 2);
+      result.set(bytes.slice(2), 2 + jfifSegment.length);
+      return result;
+    }
+
+    function addPngDpi(bytes) {
+      const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+
+      for (let i = 0; i < signature.length; i++) {
+        if (bytes[i] !== signature[i]) return bytes;
+      }
+
+      // pHYs zapisuje piksele na metr; 300 DPI = około 11811 px/m.
+      const pixelsPerMeter = Math.round(EXPORT_DPI / 0.0254);
+      const chunk = new Uint8Array(21);
+
+      writeUint32(chunk, 0, 9); // długość danych pHYs
+      chunk.set([0x70, 0x48, 0x59, 0x73], 4); // "pHYs"
+      writeUint32(chunk, 8, pixelsPerMeter);
+      writeUint32(chunk, 12, pixelsPerMeter);
+      chunk[16] = 1; // jednostka: metr
+
+      const crcData = chunk.slice(4, 17);
+      writeUint32(chunk, 17, crc32(crcData));
+
+      // PNG: sygnatura 8 B + długość IHDR 4 B + typ IHDR 4 B + dane IHDR 13 B + CRC 4 B.
+      const insertAt = 8 + 4 + 4 + 13 + 4;
+      if (bytes.length < insertAt) return bytes;
+
+      const result = new Uint8Array(bytes.length + chunk.length);
+      result.set(bytes.slice(0, insertAt), 0);
+      result.set(chunk, insertAt);
+      result.set(bytes.slice(insertAt), insertAt + chunk.length);
+      return result;
+    }
+
+    function writeUint32(bytes, offset, value) {
+      bytes[offset] = (value >>> 24) & 0xFF;
+      bytes[offset + 1] = (value >>> 16) & 0xFF;
+      bytes[offset + 2] = (value >>> 8) & 0xFF;
+      bytes[offset + 3] = value & 0xFF;
+    }
+
+    function crc32(bytes) {
+      let crc = 0xFFFFFFFF;
+
+      for (let i = 0; i < bytes.length; i++) {
+        crc ^= bytes[i];
+
+        for (let j = 0; j < 8; j++) {
+          crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+        }
+      }
+
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    // --- OBSŁUGA ZDARZEŃ ---
+    function getCanvasPoint(event) {
+      const rect = cropCanvas.getBoundingClientRect();
+
+      return {
+        x: (event.clientX - rect.left) * (cropCanvas.width / rect.width),
+        y: (event.clientY - rect.top) * (cropCanvas.height / rect.height)
+      };
+    }
+
+    function setupEventListeners() {
+      document.getElementById("file-input").addEventListener("change", event => {
+        handleImageLoad(event.target.files[0]);
+        event.target.value = "";
+      });
+
+      document.getElementById("camera-input").addEventListener("change", event => {
+        handleImageLoad(event.target.files[0]);
+        event.target.value = "";
+      });
+
+      const zoomSlider = document.getElementById("zoom-slider");
+
+      zoomSlider.addEventListener("input", event => {
+        if (!loadedImage) return;
+
+        const factor = Number(event.target.value);
+        document.getElementById("zoom-value").innerText = `${Math.round(factor * 100)}%`;
+
+        const newScale = cropState.baseScale * factor;
+        const ratio = newScale / cropState.scale;
+        const centerX = cropCanvas.width / 2;
+        const centerY = cropCanvas.height / 2;
+
+        cropState.x = centerX - (centerX - cropState.x) * ratio;
+        cropState.y = centerY - (centerY - cropState.y) * ratio;
+        cropState.scale = newScale;
+
+        renderCropCanvas();
+      });
+
+      document.getElementById("rotate-slider").addEventListener("input", event => {
+        if (!loadedImage) return;
+
+        cropState.rotation = Number(event.target.value);
+        document.getElementById("rotate-value").innerText = `${cropState.rotation}°`;
+        renderCropCanvas();
+      });
+
+      document.getElementById("toggle-grid-lines").addEventListener("change", () => {
+        if (loadedImage && currentStep >= 4) renderSheetPreview();
+      });
+
+      cropCanvas.addEventListener("pointerdown", event => {
+        if (!loadedImage) return;
+
+        event.preventDefault();
+        cropCanvas.setPointerCapture(event.pointerId);
+        activePointers.set(event.pointerId, getCanvasPoint(event));
+
+        if (activePointers.size === 1) {
+          dragPointerId = event.pointerId;
+          const point = getCanvasPoint(event);
+          dragOffset = {
+            x: point.x - cropState.x,
+            y: point.y - cropState.y
+          };
+        } else if (activePointers.size === 2) {
+          dragPointerId = null;
+          const points = Array.from(activePointers.values());
+
+          pinchStart = {
+            distance: Math.hypot(
+              points[0].x - points[1].x,
+              points[0].y - points[1].y
+            ),
+            scale: cropState.scale
+          };
+        }
+      });
+
+      cropCanvas.addEventListener("pointermove", event => {
+        if (!loadedImage || !activePointers.has(event.pointerId)) return;
+
+        event.preventDefault();
+        activePointers.set(event.pointerId, getCanvasPoint(event));
+
+        if (activePointers.size === 1 && dragPointerId === event.pointerId) {
+          const point = getCanvasPoint(event);
+          cropState.x = point.x - dragOffset.x;
+          cropState.y = point.y - dragOffset.y;
+          renderCropCanvas();
+        } else if (activePointers.size >= 2 && pinchStart) {
+          const points = Array.from(activePointers.values());
+          const currentDistance = Math.hypot(
+            points[0].x - points[1].x,
+            points[0].y - points[1].y
+          );
+
+          const ratio = currentDistance / Math.max(1, pinchStart.distance);
+          const minScale = cropState.baseScale * 0.2;
+          const maxScale = cropState.baseScale * 3;
+          cropState.scale = Math.min(maxScale, Math.max(minScale, pinchStart.scale * ratio));
+
+          const sliderValue = cropState.scale / cropState.baseScale;
+          zoomSlider.value = String(sliderValue);
+          document.getElementById("zoom-value").innerText = `${Math.round(sliderValue * 100)}%`;
+
+          renderCropCanvas();
+        }
+      });
+
+      function endPointer(event) {
+        activePointers.delete(event.pointerId);
+
+        if (activePointers.size < 2) pinchStart = null;
+
+        if (activePointers.size === 0) {
+          dragPointerId = null;
+        } else if (activePointers.size === 1) {
+          const [pointerId, point] = Array.from(activePointers.entries())[0];
+          dragPointerId = pointerId;
+          dragOffset = {
+            x: point.x - cropState.x,
+            y: point.y - cropState.y
+          };
+        }
+      }
+
+      cropCanvas.addEventListener("pointerup", endPointer);
+      cropCanvas.addEventListener("pointercancel", endPointer);
+      cropCanvas.addEventListener("lostpointercapture", endPointer);
+
+      window.addEventListener("resize", () => {
+        fitCropCanvasToStage();
+        if (loadedImage) renderCropCanvas();
+      });
+    }
+  </script>
+</body>
+</html>
