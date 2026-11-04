@@ -964,29 +964,98 @@
     }
 
     // --- PODGLĄD ARKUSZA ---
+
+
     function renderSheetPreview() {
-      if (!loadedImage) return;
+  if (!loadedImage) return;
 
-      const maxDimension = 600;
-      if (paperConfig.width >= paperConfig.height) {
-        sheetCanvas.width = maxDimension;
-        sheetCanvas.height = Math.round(maxDimension * paperConfig.height / paperConfig.width);
-      } else {
-        sheetCanvas.height = maxDimension;
-        sheetCanvas.width = Math.round(maxDimension * paperConfig.width / paperConfig.height);
+  const pW = paperConfig.width;
+  const pH = paperConfig.height;
+  const fW = photoConfig.width;
+  const fH = photoConfig.height;
+
+  const margin = 5;
+  const spacing = 2;
+
+  const availW = pW - margin * 2;
+  const availH = pH - margin * 2;
+
+  const cols = Math.floor((availW + spacing) / (fW + spacing));
+  const rows = Math.floor((availH + spacing) / (fH + spacing));
+  const count = cols * rows;
+
+  calculatedGrid = { cols, rows, count, spacing };
+
+  // Podgląd mieści się na ekranie, ale jego proporcje odpowiadają arkuszowi.
+  const previewBox = sheetCanvas.parentElement.parentElement;
+  const availableWidth = Math.max(120, previewBox.clientWidth - 32);
+  const availableHeight = Math.max(
+    180,
+    Math.min(window.innerHeight * 0.48, 460)
+  );
+
+  const scale = Math.min(
+    availableWidth / pW,
+    availableHeight / pH
+  );
+
+  const displayWidth = Math.max(1, Math.round(pW * scale));
+  const displayHeight = Math.max(1, Math.round(pH * scale));
+  const pixelRatio = 2;
+
+  // Wewnętrzna rozdzielczość canvasu jest większa dla ostrzejszego podglądu.
+  sheetCanvas.width = displayWidth * pixelRatio;
+  sheetCanvas.height = displayHeight * pixelRatio;
+
+  // Jawne wymiary CSS zapobiegają rozciąganiu arkusza przez style podglądu.
+  sheetCanvas.style.width = `${displayWidth}px`;
+  sheetCanvas.style.height = `${displayHeight}px`;
+  sheetCanvas.style.maxWidth = "none";
+  sheetCanvas.style.maxHeight = "none";
+
+  const previewContainer = sheetCanvas.parentElement;
+  previewContainer.style.width = `${displayWidth}px`;
+  previewContainer.style.height = `${displayHeight}px`;
+
+  sheetCtx.fillStyle = "#ffffff";
+  sheetCtx.fillRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+
+  const photoImg = getCroppedPhotoCanvas();
+
+  const scaleX = sheetCanvas.width / pW;
+  const scaleY = sheetCanvas.height / pH;
+
+  const gridTotalW = cols * fW + (cols - 1) * spacing;
+  const gridTotalH = rows * fH + (rows - 1) * spacing;
+  const startX = (pW - gridTotalW) / 2;
+  const startY = (pH - gridTotalH) / 2;
+
+  const drawLines = document.getElementById("toggle-grid-lines").checked;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const xMM = startX + c * (fW + spacing);
+      const yMM = startY + r * (fH + spacing);
+
+      const xPX = xMM * scaleX;
+      const yPX = yMM * scaleY;
+      const wPX = fW * scaleX;
+      const hPX = fH * scaleY;
+
+      sheetCtx.drawImage(photoImg, xPX, yPX, wPX, hPX);
+
+      if (drawLines) {
+        sheetCtx.strokeStyle = "#cbd5e1";
+        sheetCtx.lineWidth = 1.5 * pixelRatio;
+        sheetCtx.strokeRect(xPX, yPX, wPX, hPX);
       }
-
-      const photoCanvas = getCroppedPhotoCanvas();
-      drawSheet(sheetCtx, sheetCanvas, photoCanvas);
-
-      const { cols, rows, count } = calculateGrid();
-      document.getElementById("sheet-info-text").innerText =
-        `Rozmieszczono ${count} szt. (${cols} kolumn × ${rows} wierszy)`;
-
-      const previewContainer = document.getElementById("paper-preview-container");
-      previewContainer.style.width = `${sheetCanvas.width}px`;
-      previewContainer.style.height = `${sheetCanvas.height}px`;
     }
+  }
+
+  document.getElementById("sheet-info-text").innerText =
+    `Rozmieszczono ${count} szt. (${cols} kolumn × ${rows} wierszy) — arkusz ${pW} × ${pH} mm`;
+}
+
 
     // --- PODSUMOWANIE ---
     function updateSummary() {
