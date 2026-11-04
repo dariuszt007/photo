@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title id="page-title">FotoDruk Pro</title>
+  
+  <!-- jsPDF do generowania PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --primary-blue: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent-blue: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 4px 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--primary-blue);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .step-badge {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .lang-select {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+
+    /* Stepper Header */
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 20px;
+      padding: 0 8px;
+      position: relative;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .step-item.active .step-num {
+      border-color: var(--accent-blue);
+      background: var(--primary-blue);
+      color: #fff;
+    }
+
+    .step-item.completed .step-num {
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    .step-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .step-item.active .step-label {
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    /* Container Card */
+    .container {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-page {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-page.active {
+      display: flex;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .page-header h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .page-header p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Preset Grid Cards */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card-preset {
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .card-preset:hover, .card-preset.active {
+      border-color: var(--accent-blue);
+      background: #1e3a8a33;
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
+    }
+
+    .card-preset svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--accent-blue);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .card-preset .title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .card-preset .desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Custom Form Box */
+    .custom-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .custom-box-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .inputs-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .input-group input {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: #fff;
+      padding: 10px;
+      font-size: 1rem;
+      text-align: center;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    /* Info Banner */
+    .info-banner {
+      background: #1e3a8a40;
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: #bfdbfe;
+    }
+
+    /* Crop Viewport */
+    .crop-container {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      border: 1px solid var(--card-border);
+    }
+
+    #crop-viewport {
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75);
+      border: 1px dashed #fff;
+    }
+
+    #image-to-crop {
+      position: absolute;
+      transform-origin: center center;
+      cursor: move;
+    }
+
+    .ellipse-overlay {
+      position: absolute;
+      border: 2px dashed #00ffcc;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0,255,204,0.4);
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .zoom-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .zoom-bar label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .zoom-bar input[type=range] {
+      flex: 1;
+    }
+
+    /* Preview Sheet Box */
+    .sheet-wrapper {
+      width: 100%;
+      background: #000;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+      max-height: 380px;
+      border: 1px solid var(--card-border);
+    }
+
+    #paper-sheet {
+      background: white;
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      padding: 5mm;
+      gap: 2mm;
+      box-sizing: border-box;
+      box-shadow: 0 0 20px rgba(255,255,255,0.1);
+    }
+
+    .photo-item {
+      border: 0.2mm solid #ddd;
+      box-sizing: border-box;
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* Action Buttons Navigation */
+    .nav-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary-blue);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    #file-input, #camera-input { display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+      </div>
+      <span class="brand-title">FotoDruk Pro</span>
+    </div>
+
+    <select id="lang-picker" class="lang-select" onchange="changeLanguage(this.value)">
+      <option value="pl">Polski</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+      <option value="es">Español</option>
+      <option value="pt">Português</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+    </select>
+  </header>
+
+  <!-- Stepper Header -->
+  <div class="stepper">
+    <div class="step-item active" id="st-1">
+      <div class="step-num">1</div>
+      <span class="step-label" data-i18n="step_paper">Papier</span>
+    </div>
+    <div class="step-item" id="st-2">
+      <div class="step-num">2</div>
+      <span class="step-label" data-i18n="step_photo">Zdjęcie</span>
+    </div>
+    <div class="step-item" id="st-3">
+      <div class="step-num">3</div>
+      <span class="step-label" data-i18n="step_crop">Kadrowanie</span>
+    </div>
+    <div class="step-item" id="st-4">
+      <div class="step-num">4</div>
+      <span class="step-label" data-i18n="step_sheet">Arkusz</span>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- KROK 1: Format Papieru -->
+    <div class="step-page active" id="page-1">
+      <div class="page-header">
+        <h2 data-i18n="p1_title">Wybierz format papieru</h2>
+        <p data-i18n="p1_sub">Na jakim arkuszu będziesz drukować zdjęcia?</p>
+      </div>
+
+      <div class="preset-grid">
+        <div class="card-preset active" onclick="selectPaper('A4', 210, 297, this)">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="title">A4</span>
+          <span class="desc">210 × 297 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPaper('10x15', 100, 150, this)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span class="title">10 × 15 cm</span>
+          <span class="desc">100 × 150 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPaper('L', 89, 127, this)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+          <span class="title">Format L</span>
+          <span class="desc">89 × 127 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPaper('2L', 127, 178, this)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+          <span class="title">Format 2L</span>
+          <span class="desc">127 × 178 mm</span>
+        </div>
+      </div>
+
+      <div class="custom-box">
+        <div class="custom-box-title" data-i18n="custom_paper_label">WŁASNY ROZMIAR ARKUSZA (MM)</div>
+        <div class="inputs-row">
+          <div class="input-group">
+            <label data-i18n="width_mm">Szerokość (mm)</label>
+            <input type="number" id="paper-w" value="210" onchange="saveCustomPaper()">
+          </div>
+          <div class="input-group">
+            <label data-i18n="height_mm">Wysokość (mm)</label>
+            <input type="number" id="paper-h" value="297" onchange="saveCustomPaper()">
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-primary" onclick="goToStep(2)" data-i18n="btn_next">Dalej &rarr;</button>
+      </div>
+    </div>
+
+    <!-- KROK 2: Format Zdjęcia -->
+    <div class="step-page" id="page-2">
+      <div class="page-header">
+        <h2 data-i18n="p2_title">Wybierz format zdjęcia</h2>
+        <p data-i18n="p2_sub">Wybierz typ dokumentu lub ustaw wymiary.</p>
+      </div>
+
+      <div class="preset-grid">
+        <div class="card-preset active" onclick="selectPhoto('dowod', 35, 45, this)">
+          <span class="title" data-i18n="ph_id">Dowód osobisty</span>
+          <span class="desc">35 × 45 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPhoto('paszport', 35, 45, this)">
+          <span class="title" data-i18n="ph_passport">Paszport</span>
+          <span class="desc">35 × 45 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPhoto('legitymacja', 30, 42, this)">
+          <span class="title" data-i18n="ph_school">Legitymacja</span>
+          <span class="desc">30 × 42 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPhoto('wiza_usa', 51, 51, this)">
+          <span class="title">Wiza USA</span>
+          <span class="desc">51 × 51 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPhoto('wiza_china', 33, 48, this)">
+          <span class="title" data-i18n="ph_china">Wiza Chiny</span>
+          <span class="desc">33 × 48 mm</span>
+        </div>
+
+        <div class="card-preset" onclick="selectPhoto('wiza_canada', 50, 70, this)">
+          <span class="title" data-i18n="ph_canada">Wiza Kanada</span>
+          <span class="desc">50 × 70 mm</span>
+        </div>
+      </div>
+
+      <div class="custom-box">
+        <div class="custom-box-title" data-i18n="custom_photo_label">WŁASNY ROZMIAR ZDJĘCIA (MM)</div>
+        <div class="inputs-row">
+          <div class="input-group">
+            <label data-i18n="width_mm">Szerokość (mm)</label>
+            <input type="number" id="photo-w" value="35" onchange="saveCustomPhoto()">
+          </div>
+          <div class="input-group">
+            <label data-i18n="height_mm">Wysokość (mm)</label>
+            <input type="number" id="photo-h" value="45" onchange="saveCustomPhoto()">
+          </div>
+        </div>
+      </div>
+
+      <div class="info-banner" id="bio-info-box"></div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="goToStep(1)" data-i18n="btn_back">&larr; Wstecz</button>
+        <button class="btn btn-primary" onclick="goToStep(3)" data-i18n="btn_next">Dalej &rarr;</button>
+      </div>
+    </div>
+
+    <!-- KROK 3: Kadrowanie -->
+    <div class="step-page" id="page-3">
+      <div class="page-header">
+        <h2 data-i18n="p3_title">Dopasuj zdjęcie w ramce</h2>
+        <p data-i18n="p3_sub">Przesuwaj i skaluj palcem zdjęcie do owalu twarzy.</p>
+      </div>
+
+      <div class="info-banner" id="crop-guide-box"></div>
+
+      <div class="crop-container" id="crop-container">
+        <div id="crop-viewport">
+          <img id="image-to-crop" src="" alt="Dopasowanie" style="display:none;">
+          <div class="ellipse-overlay" id="ellipse-guide"></div>
+        </div>
+      </div>
+
+      <div class="zoom-bar">
+        <label data-i18n="zoom">Zoom:</label>
+        <input type="range" id="zoom-slider" min="0.2" max="3" step="0.01" value="1">
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="triggerFileInput()" data-i18n="btn_file">📁 Z pliku</button>
+        <button class="btn btn-secondary" onclick="triggerCameraInput()" data-i18n="btn_camera">📷 Aparat</button>
+      </div>
+
+      <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+      <input type="file" id="camera-input" accept="image/*" capture="user" onchange="handleFileSelect(event)">
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="goToStep(2)" data-i18n="btn_back">&larr; Wstecz</button>
+        <button class="btn btn-primary" onclick="processCroppedImage()" data-i18n="btn_next">Dalej &rarr;</button>
+      </div>
+    </div>
+
+    <!-- KROK 4: Podgląd i Pobieranie -->
+    <div class="step-page" id="page-4">
+      <div class="page-header">
+        <h2 data-i18n="p4_title">Gotowy arkusz</h2>
+        <p data-i18n="p4_sub">Maksymalnie rozmieszczone zdjęcia z liniami cięcia.</p>
+      </div>
+
+      <div class="sheet-wrapper">
+        <div id="paper-sheet"></div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-primary" onclick="exportPDF()">Pobierz PDF</button>
+        <button class="btn btn-secondary" onclick="exportImage('png')">Pobierz PNG</button>
+        <button class="btn btn-secondary" onclick="exportImage('jpg')">JPG</button>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="goToStep(3)" data-i18n="btn_recrop">&larr; Zmień kadrowanie</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const translations = {
+      pl: {
+        step_paper: "Papier", step_photo: "Zdjęcie", step_crop: "Kadrowanie", step_sheet: "Arkusz",
+        p1_title: "Wybierz format papieru", p1_sub: "Na jakim arkuszu będziesz drukować zdjęcia?",
+        custom_paper_label: "WŁASNY ROZMIAR ARKUSZA (MM)", width_mm: "Szerokość (mm)", height_mm: "Wysokość (mm)",
+        btn_next: "Dalej →", btn_back: "← Wstecz",
+        p2_title: "Wybierz format zdjęcia", p2_sub: "Wybierz typ dokumentu lub ustaw wymiary.",
+        ph_id: "Dowód osobisty", ph_passport: "Paszport", ph_school: "Legitymacja", ph_china: "Wiza Chiny", ph_canada: "Wiza Kanada",
+        custom_photo_label: "WŁASNY ROZMIAR ZDJĘCIA (MM)",
+        p3_title: "Dopasuj zdjęcie w ramce", p3_sub: "Przesuwaj i skaluj palcem zdjęcie do owalu twarzy.",
+        zoom: "Powiększenie:", btn_file: "📁 Z pliku", btn_camera: "📷 Aparat",
+        p4_title: "Gotowy arkusz do druku", p4_sub: "Zdjęcia wygenerowane cyfrowo w 300 DPI.", btn_recrop: "← Zmień kadrowanie"
+      },
+      en: {
+        step_paper: "Paper", step_photo: "Photo", step_crop: "Crop", step_sheet: "Sheet",
+        p1_title: "Select paper format", p1_sub: "Which paper sheet size will you use?",
+        custom_paper_label: "CUSTOM SHEET SIZE (MM)", width_mm: "Width (mm)", height_mm: "Height (mm)",
+        btn_next: "Next →", btn_back: "← Back",
+        p2_title: "Select photo format", p2_sub: "Choose document type or set custom dimensions.",
+        ph_id: "ID Card", ph_passport: "Passport", ph_school: "School ID", ph_china: "China Visa", ph_canada: "Canada Visa",
+        custom_photo_label: "CUSTOM PHOTO SIZE (MM)",
+        p3_title: "Crop and adjust photo", p3_sub: "Drag and zoom photo to align with head oval.",
+        zoom: "Zoom:", btn_file: "📁 File", btn_camera: "📷 Camera",
+        p4_title: "Ready print sheet", p4_sub: "Digitally generated print sheet in 300 DPI.", btn_recrop: "← Change crop"
+      }
+    };
+
+    const specs = {
+      dowod: { title: "Dowód / Paszport", bg: "Tło jasne, jednolite, bez cieni.", head: "Twarz powinna zajmować 70–80% wysokości zdjęcia." },
+      paszport: { title: "Paszport Biometryczny", bg: "Tło białe lub bardzo jasne.", head: "Głowa zajmuje 70–80% wysokości kadru." },
+      legitymacja: { title: "Legitymacja", bg: "Jednolite jasne tło.", head: "Głowa ok. 60–70% kadru." },
+      wiza_usa: { title: "Wiza USA (2×2 cale)", bg: "Bezwzględnie czyste białe tło.", head: "Głowa zajmuje od 25 mm do 35 mm." },
+      wiza_china: { title: "Wiza Chiny", bg: "Czysto białe tło bez cieni.", head: "Wysokość głowy 28–33 mm." },
+      wiza_canada: { title: "Wiza Kanada", bg: "Jasne tło, neutralny wyraz twarzy.", head: "Wysokość głowy 31–36 mm." },
+      custom: { title: "Własny Rozmiar", bg: "Zalecane jasne tło.", head: "Wyśrodkuj głowę w elipsie." }
+    };
+
+    const state = {
+      lang: 'pl',
+      paper: { type: 'A4', width: 210, height: 297 },
+      photo: { type: 'dowod', width: 35, height: 45 },
+      imageLoaded: false,
+      imgElement: null,
+      imgScale: 1,
+      imgPosX: 0,
+      imgPosY: 0,
+      croppedCanvas: null
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStorage();
+      updateInfo();
+      setupTouchAndDrag();
+    });
+
+    function changeLanguage(lang) {
+      state.lang = lang;
+      const t = translations[lang] || translations.en;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.innerText = t[key];
+      });
+      updateInfo();
+    }
+
+    function loadStorage() {
+      const pw = localStorage.getItem('fp_pw'), ph = localStorage.getItem('fp_ph');
+      if (pw && ph) { document.getElementById('paper-w').value = pw; document.getElementById('paper-h').value = ph; }
+      const fw = localStorage.getItem('fp_fw'), fh = localStorage.getItem('fp_fh');
+      if (fw && fh) { document.getElementById('photo-w').value = fw; document.getElementById('photo-h').value = fh; }
+    }
+
+    function saveCustomPaper() {
+      const w = parseFloat(document.getElementById('paper-w').value) || 210;
+      const h = parseFloat(document.getElementById('paper-h').value) || 297;
+      localStorage.setItem('fp_pw', w); localStorage.setItem('fp_ph', h);
+      state.paper.width = w; state.paper.height = h;
+    }
+
+    function saveCustomPhoto() {
+      const w = parseFloat(document.getElementById('photo-w').value) || 35;
+      const h = parseFloat(document.getElementById('photo-h').value) || 45;
+      localStorage.setItem('fp_fw', w); localStorage.setItem('fp_fh', h);
+      state.photo.width = w; state.photo.height = h;
+    }
+
+    function goToStep(step) {
+      if (step === 3) setupCropViewport();
+      if (step === 4) {
+        if (!state.imageLoaded) { alert('Najpierw wgraj zdjęcie!'); return; }
+        generateSheetPreview();
+      }
+
+      document.querySelectorAll('.step-page').forEach((el, i) => el.classList.toggle('active', i + 1 === step));
+      document.querySelectorAll('.step-item').forEach((el, i) => {
+        el.classList.toggle('active', i + 1 === step);
+        el.classList.toggle('completed', i + 1 < step);
+      });
+    }
+
+    function selectPaper(type, w, h, el) {
+      document.querySelectorAll('#page-1 .card-preset').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      state.paper.type = type;
+      if (type !== 'custom') { state.paper.width = w; state.paper.height = h; }
+    }
+
+    function selectPhoto(type, w, h, el) {
+      document.querySelectorAll('#page-2 .card-preset').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      state.photo.type = type;
+      if (type !== 'custom') { state.photo.width = w; state.photo.height = h; }
+      updateInfo();
+    }
+
+    function updateInfo() {
+      const sp = specs[state.photo.type] || specs.custom;
+      document.getElementById('bio-info-box').innerHTML = `<strong>${sp.title}</strong><br>• Tło: ${sp.bg}<br>• Kadr: ${sp.head}`;
+    }
+
+    function setupCropViewport() {
+      const container = document.getElementById('crop-container');
+      const vp = document.getElementById('crop-viewport');
+      const ellipse = document.getElementById('ellipse-guide');
+
+      const maxVW = container.clientWidth - 32;
+      const maxVH = container.clientHeight - 32;
+      const aspect = state.photo.width / state.photo.height;
+
+      let vpW = maxVW, vpH = maxVW / aspect;
+      if (vpH > maxVH) { vpH = maxVH; vpW = maxVH * aspect; }
+
+      vp.style.width = `${vpW}px`;
+      vp.style.height = `${vpH}px`;
+
+      const eh = vpH * 0.72;
+      const ew = eh * 0.75;
+      ellipse.style.width = `${ew}px`;
+      ellipse.style.height = `${eh}px`;
+      ellipse.style.top = `${(vpH - eh) / 2}px`;
+      ellipse.style.left = `${(vpW - ew) / 2}px`;
+
+      if (state.imgElement) updateTransform();
+    }
+
+    function triggerFileInput() { document.getElementById('file-input').click(); }
+    function triggerCameraInput() { document.getElementById('camera-input').click(); }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = document.getElementById('image-to-crop');
+        img.src = event.target.result;
+        img.style.display = 'block';
+
+        img.onload = () => {
+          state.imageLoaded = true;
+          state.imgElement = img;
+
+          const vp = document.getElementById('crop-viewport');
+          const scaleX = vp.clientWidth / img.naturalWidth;
+          const scaleY = vp.clientHeight / img.naturalHeight;
+          state.imgScale = Math.max(scaleX, scaleY);
+
+          document.getElementById('zoom-slider').value = state.imgScale;
+          document.getElementById('zoom-slider').min = state.imgScale * 0.5;
+          document.getElementById('zoom-slider').max = state.imgScale * 4;
+
+          state.imgPosX = (vp.clientWidth - img.naturalWidth * state.imgScale) / 2;
+          state.imgPosY = (vp.clientHeight - img.naturalHeight * state.imgScale) / 2;
+
+          updateTransform();
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setupTouchAndDrag() {
+      const container = document.getElementById('crop-container');
+      const slider = document.getElementById('zoom-slider');
+      let isDragging = false, startX = 0, startY = 0;
+
+      slider.addEventListener('input', (e) => {
+        if (!state.imageLoaded) return;
+        state.imgScale = parseFloat(e.target.value);
+        updateTransform();
+      });
+
+      container.addEventListener('mousedown', (e) => {
+        if (!state.imageLoaded) return;
+        isDragging = true;
+        startX = e.clientX - state.imgPosX;
+        startY = e.clientY - state.imgPosY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        state.imgPosX = e.clientX - startX;
+        state.imgPosY = e.clientY - startY;
+        updateTransform();
+      });
+
+      window.addEventListener('mouseup', () => isDragging = false);
+
+      container.addEventListener('touchstart', (e) => {
+        if (!state.imageLoaded) return;
+        if (e.touches.length === 1) {
+          isDragging = true;
+          startX = e.touches[0].clientX - state.imgPosX;
+          startY = e.touches[0].clientY - state.imgPosY;
+        }
+      });
+
+      container.addEventListener('touchmove', (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        state.imgPosX = e.touches[0].clientX - startX;
+        state.imgPosY = e.touches[0].clientY - startY;
+        updateTransform();
+      });
+
+      container.addEventListener('touchend', () => isDragging = false);
+    }
+
+    function updateTransform() {
+      if (!state.imgElement) return;
+      state.imgElement.style.transform = `translate(${state.imgPosX}px, ${state.imgPosY}px) scale(${state.imgScale})`;
+    }
+
+    function processCroppedImage() {
+      if (!state.imageLoaded) return;
+
+      const vp = document.getElementById('crop-viewport');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const scaleDPI = 11.81; // 300 DPI (1mm ≈ 11.81px)
+      const targetW = Math.round(state.photo.width * scaleDPI);
+      const targetH = Math.round(state.photo.height * scaleDPI);
+
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      const ratio = targetW / vp.clientWidth;
+
+      ctx.drawImage(
+        state.imgElement,
+        state.imgPosX * ratio,
+        state.imgPosY * ratio,
+        state.imgElement.naturalWidth * state.imgScale * ratio,
+        state.imgElement.naturalHeight * state.imgScale * ratio
+      );
+
+      state.croppedCanvas = canvas;
+      goToStep(4);
+    }
+
+    function generateSheetPreview() {
+      const sheet = document.getElementById('paper-sheet');
+      sheet.innerHTML = '';
+
+      const paperW = state.paper.width, paperH = state.paper.height;
+      const photoW = state.photo.width, photoH = state.photo.height;
+
+      const displayW = Math.min(window.innerWidth - 64, 340);
+      const scale = displayW / paperW;
+
+      sheet.style.width = `${displayW}px`;
+      sheet.style.height = `${paperH * scale}px`;
+      sheet.style.padding = `${5 * scale}px`;
+      sheet.style.gap = `${2 * scale}px`;
+
+      const cols = Math.floor((paperW - 10 + 2) / (photoW + 2));
+      const rows = Math.floor((paperH - 10 + 2) / (photoH + 2));
+      const total = cols * rows;
+
+      const imgUrl = state.croppedCanvas.toDataURL('image/jpeg', 0.95);
+
+      for (let i = 0; i < total; i++) {
+        const item = document.createElement('div');
+        item.className = 'photo-item';
+        item.style.width = `${photoW * scale}px`;
+        item.style.height = `${photoH * scale}px`;
+        item.style.backgroundImage = `url(${imgUrl})`;
+        sheet.appendChild(item);
+      }
+    }
+
+    // Cyfrowe renderowanie arkusza w wysokiej rozdzielczości (300 DPI)
+    function renderFullSheetCanvas() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const scaleDPI = 11.81; // 300 DPI
+      const paperW = state.paper.width, paperH = state.paper.height;
+      const photoW = state.photo.width, photoH = state.photo.height;
+
+      const canvasW = Math.round(paperW * scaleDPI);
+      const canvasH = Math.round(paperH * scaleDPI);
+
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+
+      // Czyste białe tło
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      const margin = Math.round(5 * scaleDPI);
+      const gap = Math.round(2 * scaleDPI);
+      const pW = Math.round(photoW * scaleDPI);
+      const pH = Math.round(photoH * scaleDPI);
+
+      const cols = Math.floor((canvasW - (margin * 2) + gap) / (pW + gap));
+      const rows = Math.floor((canvasH - (margin * 2) + gap) / (pH + gap));
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = margin + c * (pW + gap);
+          const y = margin + r * (pH + gap);
+
+          ctx.drawImage(state.croppedCanvas, x, y, pW, pH);
+
+          // Subtelne linie cięcia wokół każdego zdjęcia
+          ctx.strokeStyle = '#cccccc';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, pW, pH);
+        }
+      }
+
+      return canvas;
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const paperW = state.paper.width, paperH = state.paper.height;
+
+      const doc = new jsPDF({
+        orientation: paperW > paperH ? 'l' : 'p',
+        unit: 'mm',
+        format: [paperW, paperH]
+      });
+
+      const sheetCanvas = renderFullSheetCanvas();
+      const imgData = sheetCanvas.toDataURL('image/jpeg', 0.98);
+
+      doc.addImage(imgData, 'JPEG', 0, 0, paperW, paperH);
+      doc.save(`FotoDruk_${state.photo.type}_${paperW}x${paperH}mm.pdf`);
+    }
+
+    function exportImage(format) {
+      const sheetCanvas = renderFullSheetCanvas();
+      const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const imgData = sheetCanvas.toDataURL(mime, 0.95);
+
+      const link = document.createElement('a');
+      link.download = `Arkusz_Zdjec.${format}`;
+      link.href = imgData;
+      link.click();
+    }
+  </script>
+</body>
+</html>
