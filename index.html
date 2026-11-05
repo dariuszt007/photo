@@ -1019,22 +1019,7 @@
 
   calculatedGrid = { cols, rows, count, spacing };
 
-  // Podgląd mieści się na ekranie, ale jego proporcje odpowiadają arkuszowi.
-  const previewBox = sheetCanvas.parentElement.parentElement;
-  const availableWidth = Math.max(120, previewBox.clientWidth - 32);
-  const availableHeight = Math.max(
-    180,
-    Math.min(window.innerHeight * 0.48, 460)
-  );
-
-  const scale = Math.min(
-    availableWidth / pW,
-    availableHeight / pH
-  );
-
-  const displayWidth = Math.max(1, Math.round(pW * scale));
-  const displayHeight = Math.max(1, Math.round(pH * scale));
-  const pixelRatio = 2;
+/// TUTAJ ///
 
   // Wewnętrzna rozdzielczość canvasu jest większa dla ostrzejszego podglądu.
   sheetCanvas.width = displayWidth * pixelRatio;
