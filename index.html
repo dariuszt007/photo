@@ -1021,7 +1021,18 @@
 
 
 //TUTAJ
- 
+   // Stały maksymalny rozmiar podglądu, niezależny od kontenera i checkboxa.
+  const maxDisplayWidth = 263;
+  const maxDisplayHeight = 376;
+
+  const scale = Math.min(
+    maxDisplayWidth / paperConfig.width,
+    maxDisplayHeight / paperConfig.height
+  );
+
+  const displayWidth = Math.max(1, Math.round(paperConfig.width * scale));
+  const displayHeight = Math.max(1, Math.round(paperConfig.height * scale));
+
       
 
 
