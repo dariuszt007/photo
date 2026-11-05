@@ -1020,20 +1020,11 @@
   calculatedGrid = { cols, rows, count, spacing };
 
 
-  // Stały rozmiar maksymalny podglądu — niezależny od linii cięcia.
-  // Na telefonie dopasuje się do dostępnej szerokości.
-  const previewBox = sheetCanvas.parentElement.parentElement;
-  const availableWidth = Math.max(100, previewBox.clientWidth - 24);
-  const maxDisplayWidth = Math.min(263, availableWidth);
-  const maxDisplayHeight = 376;
+//TUTAJ
+ 
+      
 
-  const scale = Math.min(
-    maxDisplayWidth / paperConfig.width,
-    maxDisplayHeight / paperConfig.height
-  );
 
-  const displayWidth = Math.max(1, Math.round(paperConfig.width * scale));
-  const displayHeight = Math.max(1, Math.round(paperConfig.height * scale));
   const pixelRatio = 2;
 
       
